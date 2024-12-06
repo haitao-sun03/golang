@@ -42,6 +42,18 @@ func Router() *gin.Engine {
 	product.GET("/getStr/:key", controllers.ProductController{}.GetString)
 	product.GET("/lock", controllers.ProductController{}.TestDistributeLock)
 
+	account := r.Group("/account")
+	account.PUT("/create", controllers.AccountController{}.CreateAccount)
+	account.PUT("/import", controllers.AccountController{}.ImportAccount)
+	account.GET("/foo", controllers.AccountController{}.Foo)
+	account.GET("/wallet", controllers.AccountController{}.Wallet)
+	account.GET("/block", controllers.AccountController{}.BlockHeaderAndBody)
+	account.GET("/transfer", controllers.AccountController{}.TransferEther)
+	account.GET("/transferToken", controllers.AccountController{}.TransferToken)
+	account.POST("/mint", controllers.AccountController{}.Mint)
+	account.POST("/transferTokenWithABI", controllers.AccountController{}.TransferTokenWithABI)
+	account.POST("/balanceOf", controllers.AccountController{}.BalanceOf)
+
 	return r
 
 }

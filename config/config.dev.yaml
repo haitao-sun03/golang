@@ -44,4 +44,10 @@ logging:
       maxAge: 28
       compress: true
     - type: console
+  
+geth:
+  wsAddress: "ws://localhost:8545"
+  address: "https://localhost:8545"
+  keystorePath: "/geth/dev/keystore"
+  contractAddress: "0xA03384C52E88b60cecc00EEF44f827caECe072b5"
 

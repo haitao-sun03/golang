@@ -3,11 +3,16 @@ package config
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
+	"log"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+
 	"github.com/go-redis/redis/v8"
+	"github.com/haitao-sun03/go/abi/erc20"
 	logging "github.com/haitao-sun03/logging/config"
 
 	"github.com/spf13/viper"
@@ -16,9 +21,10 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type Config struct {
+type Configs struct {
 	DB    DBConfig
 	Redis RedisConfig
+	Geth  GethConfig
 }
 
 type DBConfig struct {
@@ -36,15 +42,27 @@ type RedisConfig struct {
 	DB       int
 }
 
-var config Config
+type GethConfig struct {
+	WsAddress       string
+	Address         string
+	KeystorePath    string
+	ContractAddress string
+}
+
+var Config Configs
 var DB *gorm.DB
 var RedisClient *redis.Client
 
 func Init() {
 	// 设置viper读取配置文件
-	viper.SetConfigName("config")  // 配置文件的名称（不需要后缀）
+	// viper.SetConfigName("config")  // 配置文件的名称（不需要后缀）
 	viper.SetConfigType("yaml")    // 配置文件的类型
 	viper.AddConfigPath("config/") // 配置文件所在的路径
+
+	viper.AutomaticEnv()
+	env := viper.GetString("ENV")
+	viper.SetConfigName("config." + env)
+	fmt.Println("load config file : " + "config." + env)
 
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
@@ -52,7 +70,7 @@ func Init() {
 	}
 
 	// 解析配置到结构体
-	if err := viper.Unmarshal(&config); err != nil {
+	if err := viper.Unmarshal(&Config); err != nil {
 		panic(fmt.Errorf("unable to decode into struct, %v", err))
 	}
 
@@ -62,21 +80,23 @@ func Init() {
 		panic(fmt.Errorf("unable to decode into struct, %v", err))
 	}
 
-	InitDatabase()
-	InitRedis()
+	// InitDatabase()
+	// InitRedis()
 	//将日志配置传递给日志模块并初始化
 	logging.InitLogging(loggingConfig)
+	InitGeth()
+	InitContract()
 }
 
 func InitDatabase() {
 
 	// 使用配置初始化GORM数据库连接
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		config.DB.User,
-		config.DB.Password,
-		config.DB.Host,
-		config.DB.Port,
-		config.DB.DBName,
+		Config.DB.User,
+		Config.DB.Password,
+		Config.DB.Host,
+		Config.DB.Port,
+		Config.DB.DBName,
 		// config.DB.SSLMode,
 	)
 	// 配置 GORM Logger
@@ -109,9 +129,9 @@ func InitDatabase() {
 
 func InitRedis() {
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     config.Redis.Address,
-		Password: config.Redis.Password, // 没有密码可以为空字符串
-		DB:       config.Redis.DB,       // 使用默认DB 0
+		Addr:     Config.Redis.Address,
+		Password: Config.Redis.Password, // 没有密码可以为空字符串
+		DB:       Config.Redis.DB,       // 使用默认DB 0
 	})
 
 	// 测试连接
@@ -122,4 +142,34 @@ func InitRedis() {
 	}
 	fmt.Println("Redis connection successful:", pong)
 
+}
+
+var GethClient *ethclient.Client
+var GethWsClient *ethclient.Client
+
+func InitGeth() {
+	client, err := ethclient.Dial(Config.Geth.Address)
+	if err != nil {
+		panic(err)
+	}
+	GethClient = client
+
+	client, err = ethclient.Dial(Config.Geth.WsAddress)
+	if err != nil {
+		panic(err)
+	}
+	GethWsClient = client
+}
+
+var (
+	ERC20Contract *erc20.ERC20
+	err           error
+)
+
+func InitContract() {
+	ERC20Contract, err = erc20.NewERC20(common.HexToAddress(Config.Geth.ContractAddress), GethClient)
+	if err != nil {
+		log.Fatalln("NewERC20 error")
+		return
+	}
 }
