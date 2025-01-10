@@ -1,6 +1,8 @@
 package routers
 
 import (
+	"net/http/pprof"
+
 	"github.com/haitao-sun03/go/controllers"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +30,7 @@ func MiddleWare() gin.HandlerFunc {
 func Router() *gin.Engine {
 	r := gin.Default()
 	// r.Use(MiddleWare())
+	initPprofFun(r)
 	user := r.Group("/user")
 	user.POST("/list", controllers.UserController{}.GetList)
 	user.PUT("/add", controllers.UserController{}.AddUser)
@@ -54,6 +57,18 @@ func Router() *gin.Engine {
 	account.POST("/transferTokenWithABI", controllers.AccountController{}.TransferTokenWithABI)
 	account.POST("/balanceOf", controllers.AccountController{}.BalanceOf)
 
+	test := r.Group("/test")
+	test.GET("/test", controllers.TestController{}.Test)
 	return r
 
+}
+
+func initPprofFun(r *gin.Engine) {
+	// 注册pprof处理函数
+	r.GET("/debug/pprof/", gin.WrapF(pprof.Index))
+	r.GET("/debug/pprof/cmdline", gin.WrapF(pprof.Cmdline))
+	r.GET("/debug/pprof/profile", gin.WrapF(pprof.Profile))
+	r.GET("/debug/pprof/symbol", gin.WrapF(pprof.Symbol))
+	r.GET("/debug/pprof/trace", gin.WrapF(pprof.Trace))
+	r.POST("/debug/pprof/symbol", gin.WrapF(pprof.Symbol))
 }

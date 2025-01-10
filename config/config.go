@@ -10,9 +10,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/panjf2000/ants/v2"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/haitao-sun03/go/abi/erc20"
+	"github.com/haitao-sun03/go/routinepool"
 	logging "github.com/haitao-sun03/logging/config"
 
 	"github.com/spf13/viper"
@@ -86,6 +88,7 @@ func Init() {
 	logging.InitLogging(loggingConfig)
 	InitGeth()
 	InitContract()
+	InitRoutinePool(1000)
 }
 
 func InitDatabase() {
@@ -172,4 +175,14 @@ func InitContract() {
 		log.Fatalln("NewERC20 error")
 		return
 	}
+}
+
+var RoutinePool *ants.Pool
+
+func InitRoutinePool(cap int) {
+	RoutinePool = routinepool.NewRoutinePool(cap)
+}
+
+func TunePoolCap(cap int) {
+	RoutinePool.Tune(cap)
 }
